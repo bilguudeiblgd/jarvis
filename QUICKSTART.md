@@ -1,12 +1,13 @@
 # Quick Start Guide
 
-Get your AI Telegram bot running in 5 minutes!
+Get Jarvis running in 5 minutes! Choose your AI provider below.
 
 ## Prerequisites
 
 - ✅ Python 3.9+ installed
 - ✅ Node.js installed (for Notion MCP)
 - ✅ Telegram account
+- ✅ Choose one: Anthropic API key, OpenAI API key, OR Ollama (FREE)
 
 ## Step-by-Step Setup
 
@@ -18,31 +19,55 @@ pip install -r requirements.txt
 
 ### 2. Get Your Tokens (2 minutes)
 
-#### Telegram Bot Token
+#### Required for All Providers
+
+**Telegram Bot Token:**
 1. Open Telegram and search for `@BotFather`
 2. Send `/newbot` and follow instructions
 3. Copy the token you receive
 
-#### Anthropic API Key
-1. Go to https://console.anthropic.com/
-2. Sign up/login
-3. Go to API Keys section
-4. Create a new key and copy it
-
-#### Notion Integration Token
+**Notion Integration Token:**
 1. Go to https://www.notion.so/my-integrations
 2. Click **"+ New integration"**
-3. Give it a name (e.g., "Telegram Bot")
+3. Give it a name (e.g., "Jarvis Bot")
 4. Copy the **Internal Integration Token**
+
+#### Choose Your AI Provider
+
+**Option A: Ollama (100% FREE - Recommended for Testing)**
+1. Download from https://ollama.com/download
+2. Install and run: `ollama serve`
+3. Pull a model: `ollama pull qwen2.5:0.5b`
+4. No API key needed!
+
+**Option B: Anthropic Claude**
+1. Go to https://console.anthropic.com/
+2. Sign up/login and create an API key
+3. Copy the key (~$84/month for regular use)
+
+**Option C: OpenAI GPT**
+1. Go to https://platform.openai.com/
+2. Sign up/login and create an API key
+3. Copy the key (~$13.50/month for regular use)
 
 ### 3. Configure .env (30 seconds)
 
-The `.env` file should already exist. Update it with your tokens:
+Create a `.env` file with your tokens:
 
 ```bash
+# Required for all providers
 BOT_TOKEN=your_telegram_token_here
-ANTHROPIC_API_KEY=your_anthropic_key_here
 NOTION_INTEGRATION_TOKEN=your_notion_token_here
+
+# Add based on your AI provider choice:
+# If using Anthropic:
+ANTHROPIC_API_KEY=your_anthropic_key_here
+
+# If using OpenAI:
+OPENAI_API_KEY=your_openai_key_here
+
+# If using Ollama (optional):
+OLLAMA_MODEL=qwen2.5:0.5b
 ```
 
 ### 4. Share Notion Pages (1 minute)
@@ -58,16 +83,36 @@ Repeat for each page/database you want accessible.
 
 ### 5. Run the Bot (10 seconds)
 
+Choose the command based on your AI provider:
+
+**Using Ollama (FREE):**
 ```bash
-python ai_bot.py
+python main.py --provider ollama --model qwen2.5:0.5b
+```
+
+**Using Anthropic Claude:**
+```bash
+python main.py --provider anthropic --model claude-3-5-haiku-20241022
+```
+
+**Using OpenAI GPT:**
+```bash
+python main.py --provider openai --model gpt-4o-mini
+```
+
+Or use the management script:
+```bash
+./run_bot.sh start --provider ollama --model qwen2.5:0.5b
 ```
 
 You should see:
 ```
-INFO - 🤖 Starting AI bot...
+INFO - 🤖 Jarvis - AI Telegram Bot
+INFO - Provider: ollama
+INFO - Model: qwen2.5:0.5b
 INFO - 🔌 Initializing MCP client...
 INFO - ✅ MCP client connected to Notion!
-INFO - Starting bot...
+INFO - ✅ Starting Telegram bot...
 ```
 
 ### 6. Test It! (30 seconds)
@@ -107,9 +152,15 @@ Bot: Based on your meeting notes, the key points were...
 - Check there are no spaces around the `=` sign
 
 ### Bot doesn't respond
-- Check the bot is running (`python ai_bot.py`)
+- Check the bot is running with the correct provider
 - Verify the BOT_TOKEN is correct
 - Make sure you started the bot in Telegram with `/start`
+- For Ollama: ensure `ollama serve` is running
+
+### Which AI provider should I choose?
+- **Ollama**: FREE, runs locally, great for testing and privacy
+- **OpenAI**: Cheapest cloud option (~$13.50/month)
+- **Anthropic**: Best quality, higher cost (~$84/month)
 
 ## Next Steps
 
