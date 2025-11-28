@@ -1,0 +1,36 @@
+2025-11-28 01:13:53,172 - httpx - INFO - HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+2025-11-28 01:13:53,173 - __main__ - INFO - ✅ Ollama detected! Will use model: gpt-oss:20b
+2025-11-28 01:13:53,195 - __main__ - INFO - 🤖 Starting FREE AI bot with Ollama...
+2025-11-28 01:13:53,195 - __main__ - INFO -    Model: gpt-oss:20b
+2025-11-28 01:13:53,195 - __main__ - INFO -    💰 No API costs - 100% FREE!
+2025-11-28 01:13:53,291 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getMe "HTTP/1.1 200 OK"
+2025-11-28 01:13:53,292 - __main__ - INFO - 🔌 Initializing MCP client with Ollama...
+2025-11-28 01:13:53,915 - __main__ - INFO - ✅ MCP client connected! Using Ollama model: gpt-oss:20b
+2025-11-28 01:13:53,916 - __main__ - INFO - 💰 Running 100% FREE - no API costs!
+2025-11-28 01:13:53,950 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/deleteWebhook "HTTP/1.1 200 OK"
+2025-11-28 01:13:53,951 - telegram.ext.Application - INFO - Application started
+2025-11-28 01:13:59,497 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:13:59,800 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/sendMessage "HTTP/1.1 200 OK"
+2025-11-28 01:13:59,802 - __main__ - INFO - Processing AI query with gpt-oss:20b: what’s inside my notion
+2025-11-28 01:14:05,848 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2025-11-28 01:14:05,849 - root - INFO - {'role': 'assistant', 'content': '', 'thinking': 'User asks "what’s inside my notion". They want to know what is inside their Notion workspace. We need to fetch their Notion pages or databases. We need to use the search API. But we need to know the user context. We don\'t have authentication. The user presumably is the Notion user. We might need to call API-get-self to get bot user? But "inside my notion" could be all pages in workspace. We can use API-post-search to search with query ""? But query must be string. The search endpoint requires query, filter, sort, etc. Let\'s provide a generic search that lists top 10 pages. Use API-post-search with query ""? According to API, query is required. For empty string? Might return all? Not sure. Alternatively use list of all pages by searching "page" with filter object. So we can search all pages: filter: {property:"object",value:"page"}. Then sort by last_edited_time descending. page_size: 10. Let\'s do that.', 'tool_calls': [{'id': 'call_c7lf9arm', 'function': {'index': 0, 'name': 'API-post-search', 'arguments': {'filter': {'property': 'object', 'value': 'page'}, 'query': '', 'sort': {'direction': 'descending', 'timestamp': 'last_edited_time'}}}}]}
+2025-11-28 01:14:05,849 - root - INFO - Original args: {'filter': {'property': 'object', 'value': 'page'}, 'query': '', 'sort': {'direction': 'descending', 'timestamp': 'last_edited_time'}}
+2025-11-28 01:14:05,849 - root - INFO - Cleaned args: {'filter': {'property': 'object', 'value': 'page'}, 'sort': {'direction': 'descending', 'timestamp': 'last_edited_time'}}
+2025-11-28 01:14:09,534 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:14:16,804 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2025-11-28 01:14:17,082 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/editMessageText "HTTP/1.1 200 OK"
+2025-11-28 01:14:19,566 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:14:29,599 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:14:39,740 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:14:49,875 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:14:59,909 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:15:10,011 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:15:20,059 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:15:30,115 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:15:40,219 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:15:50,292 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:15:57,358 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8449765704:AAENawFJj-bqchzE1AhYoKkKh9x34bXQADg/getUpdates "HTTP/1.1 200 OK"
+2025-11-28 01:15:57,359 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-11-28 01:15:57,359 - telegram.ext.Application - INFO - Application.stop() complete
+
+Connected to server with tools: ['API-get-user', 'API-get-users', 'API-get-self', 'API-post-database-query', 'API-post-search', 'API-get-block-children', 'API-patch-block-children', 'API-retrieve-a-block', 'API-update-a-block', 'API-delete-a-block', 'API-retrieve-a-page', 'API-patch-page', 'API-post-page', 'API-create-a-database', 'API-update-a-database', 'API-retrieve-a-database', 'API-retrieve-a-page-property', 'API-retrieve-a-comment', 'API-create-a-comment']

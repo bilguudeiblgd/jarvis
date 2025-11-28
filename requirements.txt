@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-telegram-bot[ext]>=20.0
+python-dotenv
+httpx             # For API calls (Ollama support)
+
+# AI Providers (choose one or use multiple)
+anthropic          # Claude models (Haiku: $0.80/$4 per 1M tokens)
+openai            # GPT models (GPT-4o-mini: $0.15/$0.60 per 1M tokens)
+# Ollama - FREE local AI (install separately from ollama.com)
+
+# MCP
+mcp
