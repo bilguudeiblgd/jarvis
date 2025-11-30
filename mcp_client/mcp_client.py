@@ -1,5 +1,6 @@
 
 import asyncio
+import logging
 from typing import Optional
 from contextlib import AsyncExitStack
 
@@ -62,15 +63,17 @@ class MCPClient:
         tools = response.tools
         print("\nConnected to server with tools:", [tool.name for tool in tools])
 
-    async def process_query(self, query: str) -> str:
-        """Process a query using Claude and available tools"""
-        messages = [
-            {
-                "role": "user",
-                "content": query
-            }
-        ]
+    async def process_query(self, query: str, max_iterations: int = 10) -> str:
+        """Process a query using Claude and available tools with agent loop logic
 
+        Args:
+            query: The user's question
+            max_iterations: Maximum number of agent loop iterations (default: 10)
+
+        Returns:
+            Combined response with intermediate tool calls and final answer
+        """
+        # Get MCP tools
         response = await self.session.list_tools()
         available_tools = [{
             "name": tool.name,
@@ -78,60 +81,99 @@ class MCPClient:
             "input_schema": tool.inputSchema
         } for tool in response.tools]
 
-        # Initial Claude API call
-        # Models: claude-3-5-haiku-20241022 (cheapest/fastest)
-        #         claude-sonnet-4-20250514 (balanced)
-        #         claude-opus-4-20250514 (most capable)
-        response = self.anthropic.messages.create(
-            model="claude-3-5-haiku-20241022",  # Using Haiku - 90% cheaper!
-            max_tokens=1000,
-            messages=messages,
-            tools=available_tools,
-        )
+        messages = [
+            {
+                "role": "user",
+                "content": query
+            }
+        ]
 
-        # Process response and handle tool calls
+        # Track intermediate text responses
         final_text = []
 
-        assistant_message_content = []
-        for content in response.content:
-            if content.type == 'text':
-                final_text.append(content.text)
+        # Agent loop: continue until no more tool calls or max iterations reached
+        iteration = 0
+        while iteration < max_iterations:
+            iteration += 1
+            logging.info(f"Agent loop iteration {iteration}/{max_iterations}")
+
+            # Call Claude API
+            # Models: claude-3-5-haiku-20241022 (cheapest/fastest)
+            #         claude-sonnet-4-20250514 (balanced)
+            #         claude-opus-4-20250514 (most capable)
+            response = self.anthropic.messages.create(
+                model="claude-3-5-haiku-20241022",  # Using Haiku - 90% cheaper!
+                max_tokens=1000,
+                messages=messages,
+                tools=available_tools,
+            )
+
+            logging.info(f"Claude response: {response}")
+
+            # Collect assistant message content (text + tool uses)
+            assistant_message_content = []
+            has_tool_calls = False
+
+            # Process response content
+            for content in response.content:
                 assistant_message_content.append(content)
-            elif content.type == 'tool_use':
-                tool_name = content.name
-                tool_args = content.input
 
-                # Execute tool call
-                result = await self.session.call_tool(tool_name, tool_args)
-                final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
+                if content.type == 'text':
+                    # Preserve text content
+                    if content.text:
+                        final_text.append(content.text)
 
-                assistant_message_content.append(content)
-                messages.append({
-                    "role": "assistant",
-                    "content": assistant_message_content
-                })
-                messages.append({
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": content.id,
-                            "content": result.content
-                        }
-                    ]
-                })
+                elif content.type == 'tool_use':
+                    has_tool_calls = True
+                    tool_name = content.name
+                    tool_args = content.input
 
-                # Get next response from Claude
-                response = self.anthropic.messages.create(
-                    model="claude-3-5-haiku-20241022",  # Using Haiku - 90% cheaper!
-                    max_tokens=1000,
-                    messages=messages,
-                    tools=available_tools
-                )
+                    logging.info(f"Calling tool: {tool_name}")
+                    logging.info(f"Tool args: {tool_args}")
 
-                final_text.append(response.content[0].text)
+                    # Execute tool call via MCP
+                    mcp_result = await self.session.call_tool(tool_name, tool_args)
 
-        return "\n".join(final_text)
+                    # Add note about tool call to final text
+                    final_text.append(f"[Calling tool: {tool_name}]")
+                    logging.info(f"Tool result: {mcp_result.content}")
+
+            # Check if there are tool calls to process
+            if not has_tool_calls:
+                # No more tool calls - agent is done
+                logging.info("No tool calls found. Agent loop complete.")
+                break
+
+            # Add the assistant's message with tool calls to history
+            messages.append({
+                "role": "assistant",
+                "content": assistant_message_content
+            })
+
+            # Add tool results to messages
+            tool_results = []
+            for content in assistant_message_content:
+                if content.type == 'tool_use':
+                    # Re-execute tool to get result (already executed above for logging)
+                    mcp_result = await self.session.call_tool(content.name, content.input)
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": content.id,
+                        "content": mcp_result.content
+                    })
+
+            messages.append({
+                "role": "user",
+                "content": tool_results
+            })
+
+            # Continue loop - agent will process tool results and decide next action
+
+        if iteration >= max_iterations:
+            logging.warning(f"Agent loop reached max iterations ({max_iterations})")
+            final_text.append(f"[Warning: Reached maximum iteration limit of {max_iterations}]")
+
+        return "\n\n".join(final_text)
 
 async def main():
     """Example main function for standalone usage."""
