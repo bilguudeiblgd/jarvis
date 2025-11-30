@@ -86,7 +86,7 @@ class MCPClient:
             model="claude-3-5-haiku-20241022",  # Using Haiku - 90% cheaper!
             max_tokens=1000,
             messages=messages,
-            tools=available_tools
+            tools=available_tools,
         )
 
         # Process response and handle tool calls

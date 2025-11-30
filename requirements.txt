@@ -3,6 +3,7 @@ uvicorn
 python-telegram-bot[ext]>=20.0
 python-dotenv
 httpx             # For API calls (Ollama support)
+apscheduler       # For scheduled jobs (daily todo reminders)
 
 # AI Providers (choose one or use multiple)
 anthropic          # Claude models (Haiku: $0.80/$4 per 1M tokens)
@@ -11,3 +12,6 @@ openai            # GPT models (GPT-4o-mini: $0.15/$0.60 per 1M tokens)
 
 # MCP
 mcp
+google-genai
+
+# Google Calendar uses @cocal/google-calendar-mcp via npx (no Python deps needed)

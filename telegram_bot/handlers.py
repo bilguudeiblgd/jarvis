@@ -129,18 +129,45 @@ class BotHandlers:
             await thinking_msg.edit_text(response)
 
         except Exception as e:
-            logger.error(f"Error processing AI query: {e}")
+
+            logger.error(f"Error processing AI query: {e.with_traceback()}")
             await thinking_msg.edit_text(
                 f"❌ Error processing query: {str(e)}\n\n"
                 f"Please try again or check the logs."
             )
 
     async def echo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Echo the user message."""
-        await update.message.reply_text(
-            f"You said: {update.message.text}\n\n"
-            f"Tip: Use /ai <question> to ask AI!"
+        """Process user message with AI (conversational mode)."""
+        # Treat any non-command message as an AI query
+        query = update.message.text
+
+        # Check if MCP is initialized
+        if not self.mcp_client or not self.mcp_client.session:
+            await update.message.reply_text(
+                "⚠️ AI features not available. MCP client not connected.\n"
+                "Check server logs for details."
+            )
+            return
+
+        # Send "thinking" message
+        thinking_msg = await update.message.reply_text(
+            f"🤔 Thinking... (using {self.provider_name})"
         )
+
+        try:
+            # Process query through MCP client
+            logger.info(f"Processing AI query with {self.model_name}: {query}")
+            response = await self.mcp_client.process_query(query)
+
+            # Update message with response
+            await thinking_msg.edit_text(response)
+
+        except Exception as e:
+            logger.error(f"Error processing AI query: {e}")
+            await thinking_msg.edit_text(
+                f"❌ Error processing query: {str(e)}\n\n"
+                f"Please try again or check the logs."
+            )
 
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Log errors caused by updates."""

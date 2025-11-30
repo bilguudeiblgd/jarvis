@@ -4,8 +4,9 @@ A modular Telegram bot with Notion workspace integration via MCP (Model Context 
 
 ## Features
 
-- 🤖 Multiple AI provider support (Anthropic, OpenAI, Ollama)
+- 🤖 Multiple AI provider support (Anthropic, OpenAI, Ollama, Google Gemini)
 - 📝 Direct access to your Notion pages and databases
+- 📅 Google Calendar integration (view, create, update, delete events)
 - 🔍 Search and query your Notion workspace
 - 💬 Natural language interaction
 - 🏗️ Modular architecture for easy customization
@@ -36,6 +37,9 @@ OPENAI_API_KEY=your_openai_key_here                    # From platform.openai.co
 
 # Optional for Ollama (if using --provider ollama)
 OLLAMA_MODEL=qwen2.5:0.5b                              # Default model if not specified via --model
+
+# Optional for Google Calendar integration
+GOOGLE_OAUTH_CREDENTIALS=/path/to/oauth-credentials.json  # See docs/GOOGLE_CALENDAR_SETUP.md
 ```
 
 ### 3. Set Up Notion Integration
@@ -51,6 +55,20 @@ OLLAMA_MODEL=qwen2.5:0.5b                              # Default model if not sp
 ### 4. Install Node.js
 
 The Notion MCP server requires Node.js. Download from: https://nodejs.org/
+
+### 5. (Optional) Set Up Google Calendar Integration
+
+To enable Google Calendar features, follow the guide at [docs/GOOGLE_CALENDAR_SETUP.md](docs/GOOGLE_CALENDAR_SETUP.md).
+
+Quick summary:
+1. Create a Google Cloud project
+2. Enable Google Calendar API
+3. Configure OAuth consent screen (add yourself as test user)
+4. Create OAuth 2.0 credentials (Desktop app)
+5. Download the OAuth credentials JSON file
+6. Add `GOOGLE_OAUTH_CREDENTIALS` to your `.env`
+7. First run: Browser opens for one-time authentication
+8. Tokens stored locally for future use
 
 ## Usage
 
@@ -99,11 +117,20 @@ Or use the management script:
 
 ### Example Queries
 
+**Notion:**
 ```
 /ai What pages do I have in my Notion workspace?
 /ai Search for pages about "project planning"
 /ai Summarize my recent meeting notes
 /ai Find all pages tagged with "important"
+```
+
+**Google Calendar** (if enabled):
+```
+/ai What's on my calendar today?
+/ai Create a meeting tomorrow at 2pm for 1 hour
+/ai Show me next week's events
+/ai Find all meetings with "standup" in the title
 ```
 
 ## Architecture
@@ -120,10 +147,16 @@ Or use the management script:
 │  Telegram   │─────▶│  MCP Client  │─────▶│   Notion    │
 │     Bot     │      │   Factory    │      │ MCP Server  │
 │  (modular)  │      └──────┬───────┘      └─────────────┘
-└─────────────┘             │
+└─────────────┘             │               ┌─────────────┐
+                            │──────────────▶│   Google    │
+                            │               │  Calendar   │
+                            │               │ MCP Server  │
+                            │               └─────────────┘
+                            │
                             ├──── Anthropic Claude
                             ├──── OpenAI GPT
-                            └──── Ollama (local)
+                            ├──── Ollama (local)
+                            └──── Google Gemini
 ```
 
 ### Project Structure
@@ -142,7 +175,13 @@ jarvis/
 │   ├── factory.py               # Client factory
 │   ├── mcp_client.py            # Anthropic implementation
 │   ├── mcp_client_openai.py     # OpenAI implementation
-│   └── mcp_client_ollama.py     # Ollama implementation
+│   ├── mcp_client_ollama.py     # Ollama implementation
+│   ├── mcp_client_google.py     # Google Gemini implementation
+│   └── connections/             # MCP server connections
+│       ├── notion.py            # Notion MCP connection
+│       └── google_calendar.py   # Google Calendar MCP (OAuth)
+├── docs/                        # Documentation
+│   └── GOOGLE_CALENDAR_SETUP.md # Calendar setup guide
 └── requirements.txt
 ```
 

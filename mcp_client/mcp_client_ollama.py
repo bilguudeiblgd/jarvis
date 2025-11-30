@@ -101,11 +101,15 @@ class MCPClientOllama:
         tools = response.tools
         print("\nConnected to server with tools:", [tool.name for tool in tools])
 
-    async def process_query(self, query: str) -> str:
-        """Process a query using Ollama and available tools
+    async def process_query(self, query: str, max_iterations: int = 10) -> str:
+        """Process a query using Ollama and available tools with agent loop logic
 
         Args:
             query: The user's question
+            max_iterations: Maximum number of agent loop iterations (default: 10)
+
+        Returns:
+            Combined response with intermediate tool calls and final answer
         """
         # Get MCP tools and convert to Ollama format
         response = await self.session.list_tools()
@@ -130,21 +134,36 @@ Your role:
 - You are an agent that can use tools to answer questions
 - When a user asks a question, analyze if you need to use tools to answer it
 - Use the available tools to fetch real-time data and information
-- After using tools, provide a clear answer based on the results
+- After using tools, ALWAYS answer the EXACT question the user asked
 
 Available tools:
 {tool_descriptions}
 
-Instructions:
-- If a question requires accessing external data (Notion pages, databases, etc.), use the appropriate tool
+Core Instructions:
+1. READ THE USER'S QUESTION CAREFULLY - Remember what they asked
+2. Use tools to get the data you need
+3. After getting tool results, answer ONLY the original question
+4. Extract relevant information from the JSON response
+5. Format your answer clearly and concisely
+
+Tool Usage:
 - Call tools by their exact name with proper parameters
 - IMPORTANT: For optional parameters, DO NOT include them if you don't have a meaningful value
 - DO NOT pass empty strings ("") for optional parameters - simply omit them instead
 - For search/list operations, you typically only need the required parameters
-- After getting tool results, synthesize the information into a helpful answer
-- If you can answer without tools, do so directly
+- For Notion, the token is already set. It's only connected to my account.
+
+Response Guidelines:
+- STAY FOCUSED on answering what the user asked - don't change the question
+- Extract key information from JSON responses (titles, names, dates, etc.)
+- Present information in a clear, readable format (bullet points or numbered lists)
+- If the user asks "what pages", list the page titles/names
+- If the user asks "what tasks", list the tasks
+- If the user asks about specific data, extract and present that data clearly
 
 Examples:
+- User asks "what pages do I have?": List all page titles from the search results
+- User asks "what's my latest task?": Find and show the most recent task
 - To search Notion: Use API-post-search with only the query parameter (omit start_cursor, page_size if not needed)
 - To list pages: Use API-post-search with an empty or simple query"""
 
@@ -159,54 +178,16 @@ Examples:
             }
         ]
 
-        # Initial Ollama API call
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "tools": available_tools,
-            "stream": False
-        }
-
-        response = await self.client.post(
-            f"{self.base_url}/api/chat",
-            json=payload
-        )
-
-        result = response.json()
-        message = result["message"]
-        logging.info(message)
-
-        # Process response and handle tool calls
+        # Track intermediate text responses
         final_text = []
 
-        if message.get("content"):
-            final_text.append(message["content"])
+        # Agent loop: continue until no more tool calls or max iterations reached
+        iteration = 0
+        while iteration < max_iterations:
+            iteration += 1
+            logging.info(f"Agent loop iteration {iteration}/{max_iterations}")
 
-        # Handle tool calls
-        if message.get("tool_calls"):
-            messages.append(message)
-
-            for tool_call in message["tool_calls"]:
-                function = tool_call["function"]
-                tool_name = function["name"]
-                tool_args = function["arguments"]
-
-                # Clean tool arguments to remove empty values that cause API errors
-                cleaned_args = self._clean_tool_args(tool_args)
-                logging.info(f"Original args: {tool_args}")
-                logging.info(f"Cleaned args: {cleaned_args}")
-
-                # Execute tool call via MCP
-                mcp_result = await self.session.call_tool(tool_name, cleaned_args)
-                final_text.append(f"[Calling tool {tool_name}]")
-
-                # Add tool result to messages
-                messages.append({
-                    "role": "tool",
-                    "content": str(mcp_result.content)
-                })
-
-            # Get final response from Ollama
+            # Call Ollama API
             payload = {
                 "model": self.model,
                 "messages": messages,
@@ -220,9 +201,53 @@ Examples:
             )
 
             result = response.json()
-            final_text.append(result["message"]["content"])
+            message = result["message"]
+            logging.info(f"Agent response: {message}")
 
-        return "\n".join(final_text)
+            # Preserve any text content from this iteration
+            if message.get("content"):
+                final_text.append(message["content"])
+
+            # Check if there are tool calls to process
+            if not message.get("tool_calls"):
+                # No more tool calls - agent is done
+                logging.info("No tool calls found. Agent loop complete.")
+                break
+
+            # Add the assistant's message with tool calls to history
+            messages.append(message)
+
+            # Process each tool call
+            for tool_call in message["tool_calls"]:
+                function = tool_call["function"]
+                tool_name = function["name"]
+                tool_args = function["arguments"]
+
+                # Clean tool arguments to remove empty values that cause API errors
+                cleaned_args = self._clean_tool_args(tool_args)
+                logging.info(f"Calling tool: {tool_name}")
+                logging.info(f"Original args: {tool_args}")
+                logging.info(f"Cleaned args: {cleaned_args}")
+
+                # Execute tool call via MCP
+                mcp_result = await self.session.call_tool(tool_name, cleaned_args)
+
+                # Add note about tool call to final text
+                final_text.append(f"[Calling tool: {tool_name}]")
+                logging.info(f"Tool result: {mcp_result.content}")
+                # Add tool result to messages for next iteration
+                messages.append({
+                    "role": "tool",
+                    "content": str(mcp_result.content)
+                })
+
+            # Continue loop - agent will process tool results and decide next action
+
+        if iteration >= max_iterations:
+            logging.warning(f"Agent loop reached max iterations ({max_iterations})")
+            final_text.append(f"[Warning: Reached maximum iteration limit of {max_iterations}]")
+
+        return "\n\n".join(final_text)
 
     async def cleanup(self):
         """Cleanup resources"""

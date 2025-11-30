@@ -31,13 +31,6 @@ class TelegramBot:
         self.handlers = BotHandlers(mcp_client, provider_name, model_name)
         self.application = None
 
-    async def initialize_mcp(self, application: Application) -> None:
-        """
-        Initialize MCP client after bot application is created.
-        This is called by the post_init hook.
-        """
-        # MCP initialization is handled externally in main.py
-        pass
 
     def setup_handlers(self, application: Application) -> None:
         """Register all command and message handlers."""
@@ -56,9 +49,9 @@ class TelegramBot:
         # Register error handler
         application.add_error_handler(self.handlers.error_handler)
 
-    def run(self) -> None:
-        """Start the bot."""
-        logger.info("🤖 Starting Telegram bot...")
+    async def initialize(self) -> None:
+        """Initialize the bot application."""
+        logger.info("🤖 Initializing Telegram bot...")
         logger.info(f"   Provider: {self.provider_name}")
         logger.info(f"   Model: {self.model_name}")
 
@@ -68,5 +61,27 @@ class TelegramBot:
         # Setup all handlers
         self.setup_handlers(self.application)
 
-        # Start the bot
-        self.application.run_polling(allowed_updates=Update.ALL_TYPES)
+    async def run(self) -> None:
+        """Start the bot."""
+        if not self.application:
+            raise RuntimeError("Bot not initialized. Call initialize() first.")
+
+        # Initialize and start the bot
+        async with self.application:
+            await self.application.initialize()
+            await self.application.start()
+            await self.application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+
+            logger.info("✅ Bot is running!")
+
+            # Keep the bot running
+            import asyncio
+            try:
+                # Run forever until interrupted
+                await asyncio.Event().wait()
+            except (KeyboardInterrupt, SystemExit):
+                pass
+            finally:
+                await self.application.updater.stop()
+                await self.application.stop()
+                await self.application.shutdown()

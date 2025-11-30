@@ -61,7 +61,7 @@ start_bot() {
     fi
 
     echo "🚀 Starting bot with: $BOT_ARGS"
-    nohup python main.py $BOT_ARGS > "$LOG_FILE" 2>&1 &
+    nohup .venv/bin/python main.py $BOT_ARGS > "$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"
     echo "✅ Bot started (PID: $(cat $PID_FILE))"
     echo "📄 Logs: tail -f $LOG_FILE"

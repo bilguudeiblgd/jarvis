@@ -6,11 +6,13 @@ Creates the appropriate MCP client based on provider and model configuration.
 
 import os
 import logging
-from typing import Optional
+from typing import Optional, List
 
 from .mcp_client import MCPClient
 from .mcp_client_openai import MCPClientOpenAI
 from .mcp_client_ollama import MCPClientOllama
+from .mcp_client_google import MCPClientGoogle
+from .connections import connect_notion
 
 logger = logging.getLogger(__name__)
 
@@ -54,28 +56,43 @@ class MCPClientFactory:
             model = model or os.getenv("OLLAMA_MODEL", "qwen2.5:0.5b")
             return MCPClientOllama(model=model)
 
+        elif provider == "google" or provider == "gemini":
+            # Google Gemini - cloud-based models
+            # Default: gemini-2.5-flash
+            # Options: gemini-2.5-flash, gemini-1.5-flash, gemini-1.5-pro
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                raise ValueError("GOOGLE_API_KEY environment variable not set")
+            model = model or os.getenv("GOOGLE_MODEL", "gemini-2.5-flash")
+            return MCPClientGoogle(model=model, api_key=api_key)
+
         else:
             raise ValueError(
                 f"Unsupported provider: {provider}. "
-                f"Supported providers: anthropic, openai, ollama"
+                f"Supported providers: anthropic, openai, ollama, google"
             )
 
     @staticmethod
-    async def initialize_mcp_client(provider: str, model: Optional[str] = None):
+    async def initialize_mcp_client(
+        provider: str,
+        model: Optional[str] = None,
+        connections: Optional[List[str]] = None
+    ):
         """
-        Create and initialize an MCP client with Notion connection.
+        Create and initialize an MCP client with specified connections.
 
         Args:
             provider: AI provider name
             model: Model name (optional)
+            connections: List of connection names to enable (e.g., ['notion', 'google_calendar'])
+                        If None, defaults to ['notion'] only
 
         Returns:
             Initialized MCP client or None if initialization fails
         """
-        notion_token = os.getenv("NOTION_INTEGRATION_TOKEN")
-        if not notion_token:
-            logger.warning("NOTION_INTEGRATION_TOKEN not set. AI features will be limited.")
-            return None
+        # Default to Notion only if no connections specified
+        if connections is None:
+            connections = ['notion']
 
         try:
             logger.info(f"🔌 Initializing MCP client with {provider}...")
@@ -83,18 +100,26 @@ class MCPClientFactory:
             # Create client
             client = MCPClientFactory.create_client(provider, model)
 
-            # Create environment with Notion token
-            env_vars = os.environ.copy()
-            env_vars["NOTION_TOKEN"] = notion_token
+            # Connect to each requested MCP server
+            connected_services = []
 
-            # Connect to Notion MCP server
-            await client.connect_to_server(
-                command="npx",
-                args=["-y", "@notionhq/notion-mcp-server"],
-                env=env_vars
-            )
+            for connection in connections:
+                try:
+                    if connection == 'notion':
+                        await connect_notion(client)
+                        connected_services.append('Notion')
+                    else:
+                        logger.warning(f"Unknown connection type: {connection}")
+                except ValueError as e:
+                    logger.warning(f"Skipping {connection}: {e}")
+                except Exception as e:
+                    logger.error(f"Failed to connect to {connection}: {e}")
 
-            logger.info(f"✅ MCP client connected to Notion using {provider}!")
+            if not connected_services:
+                logger.warning("No MCP services connected. AI features will be limited.")
+                return None
+
+            logger.info(f"✅ MCP client connected to: {', '.join(connected_services)} using {provider}!")
             return client
 
         except Exception as e:
@@ -116,6 +141,8 @@ def get_default_model(provider: str) -> str:
     defaults = {
         "anthropic": "claude-3-5-haiku-20241022",
         "openai": "gpt-4o-mini",
-        "ollama": "qwen2.5:0.5b"
+        "ollama": "qwen2.5:0.5b",
+        "google": "gemini-2.5-flash",
+        "gemini": "gemini-2.5-flash"
     }
     return defaults.get(provider.lower(), "")

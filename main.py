@@ -9,13 +9,16 @@ Usage:
     python main.py --provider anthropic --model claude-3-5-haiku-20241022
     python main.py --provider ollama --model qwen2.5:0.5b
     python main.py --provider openai --model gpt-4o-mini
+    python main.py --provider google --model gemini-2.5-flash
 
 Environment variables required:
     BOT_TOKEN                    - Telegram bot token from @BotFather
     NOTION_INTEGRATION_TOKEN     - Notion integration token
     ANTHROPIC_API_KEY           - For Anthropic/Claude (if using --provider anthropic)
     OPENAI_API_KEY              - For OpenAI (if using --provider openai)
+    GOOGLE_API_KEY              - For Google Gemini (if using --provider google)
     OLLAMA_MODEL                 - Default Ollama model (optional, can use --model instead)
+    GOOGLE_MODEL                 - Default Google model (optional, can use --model instead)
 """
 
 import argparse
@@ -23,9 +26,11 @@ import logging
 import os
 import sys
 from dotenv import load_dotenv
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from mcp_client import MCPClientFactory, get_default_model
 from telegram_bot import TelegramBot
+from telegram_bot.daily_todo import daily_todo_reminder
 
 # Load environment variables
 load_dotenv()
@@ -57,10 +62,15 @@ Examples:
   python main.py --provider ollama --model qwen2.5:0.5b
   python main.py --provider ollama --model llama3.2:3b
 
+  # Using Google Gemini (requires GOOGLE_API_KEY)
+  python main.py --provider google --model gemini-2.5-flash
+  python main.py --provider google --model gemini-1.5-pro
+
 Default models:
   anthropic: claude-3-5-haiku-20241022
   openai:    gpt-4o-mini
   ollama:    qwen2.5:0.5b
+  google:    gemini-2.5-flash
         """
     )
 
@@ -68,7 +78,7 @@ Default models:
         '--provider',
         type=str,
         required=True,
-        choices=['anthropic', 'openai', 'ollama'],
+        choices=['anthropic', 'openai', 'ollama', 'google'],
         help='AI provider to use'
     )
 
@@ -139,6 +149,12 @@ def validate_environment(provider: str):
             logger.warning("")
             logger.warning("   Continuing anyway - bot will fail if Ollama is not available")
 
+    elif provider == "google" or provider == "gemini":
+        if not os.getenv("GOOGLE_API_KEY"):
+            logger.error("❌ GOOGLE_API_KEY not found in environment variables!")
+            logger.error("   Get an API key from https://aistudio.google.com/app/apikey")
+            return False
+
     return True
 
 
@@ -153,7 +169,10 @@ async def initialize_mcp(provider: str, model: str):
     Returns:
         MCP client instance or None
     """
-    return await MCPClientFactory.initialize_mcp_client(provider, model)
+    # Build list of connections to enable
+    connections = ['notion', 'google_calendar']
+
+    return await MCPClientFactory.initialize_mcp_client(provider, model, connections)
 
 
 async def main_async(args):
@@ -169,6 +188,7 @@ async def main_async(args):
     logger.info("=" * 60)
     logger.info(f"Provider: {args.provider}")
     logger.info(f"Model:    {model}")
+
     logger.info("=" * 60)
 
     # Validate environment
@@ -188,7 +208,7 @@ async def main_async(args):
     # Get bot token
     bot_token = os.getenv("BOT_TOKEN")
 
-    # Create and run Telegram bot
+    # Create Telegram bot
     bot = TelegramBot(
         token=bot_token,
         mcp_client=mcp_client,
@@ -196,10 +216,28 @@ async def main_async(args):
         model_name=model
     )
 
-    logger.info("\n✅ Starting Telegram bot...\n")
+    # Initialize the bot to create the application instance
+    await bot.initialize()
+
+    # Setup APScheduler for daily reminders
+    logger.info("⏰ Setting up daily todo reminder scheduler...")
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        daily_todo_reminder,
+        'cron',
+        hour=8,
+        minute=0,
+        args=[bot.application, mcp_client],
+        id='daily_todo_reminder',
+        name='Daily Todo Reminder at 8 AM'
+    )
+    scheduler.start()
+    logger.info("✅ Scheduler started - daily reminders will run at 8:00 AM\n")
+
+    logger.info("✅ Starting Telegram bot...\n")
 
     # Run the bot
-    bot.run()
+    await bot.run()
 
 
 def main():
