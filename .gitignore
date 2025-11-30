@@ -29,4 +29,5 @@ ENV/
 .DS_Store
 Thumbs.db
 
-*.log
+bot.log
+bot.pid
